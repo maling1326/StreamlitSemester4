@@ -1,4 +1,20 @@
-import streamlit as st
+import webbrowser
+import sys
+
+#! --- REDIRECT JIKA TIDAK PUNYA STREAMLIT ATAU RUN TANPA STREAMLIT ---
+def redirect_to_web():
+    print("🚀 Library Streamlit tidak ditemukan atau dijalankan sebagai script biasa.")
+    print("Mengarahkan ke: https://matkul-semester4-maliq.streamlit.app/")
+    webbrowser.open("https://matkul-semester4-maliq.streamlit.app/Keamanan_Data")
+    sys.exit()
+
+try:
+    import streamlit as st
+    if not st.runtime.exists():
+        redirect_to_web()
+except ImportError:
+    redirect_to_web()
+
 import numpy as np
 import cv2 as cv
 import zipfile
@@ -639,19 +655,7 @@ def course_4():
     st.write('Done!')
 
 def course_5():
-    def get_user_name():
-        return 'John'  
-
-    def get_punctuation():
-        return '!!!'
     
-    greeting = "Hi there, "
-    user_name = get_user_name()
-    punctuation = get_punctuation()
-    
-    st.write(greeting, user_name, punctuation)
-    
-    foo = 'bar'
     st.write('Done!')
 
 def course_6():

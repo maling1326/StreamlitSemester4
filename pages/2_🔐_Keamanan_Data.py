@@ -1,14 +1,59 @@
-import streamlit as st
-import numpy as np
-import cv2 as cv
-import zipfile
-import io
+import webbrowser
+import sys
+
+#! --- REDIRECT JIKA TIDAK PUNYA STREAMLIT ATAU RUN TANPA STREAMLIT ---
+def redirect_to_web():
+    print("🚀 Library Streamlit tidak ditemukan atau dijalankan sebagai script biasa.")
+    print("Mengarahkan ke: https://matkul-semester4-maliq.streamlit.app/")
+    webbrowser.open("https://matkul-semester4-maliq.streamlit.app/Keamanan_Data")
+    sys.exit()
+
+try:
+    import streamlit as st
+    if not st.runtime.exists():
+        redirect_to_web()
+except ImportError:
+    redirect_to_web()
+
+import pandas as pd
 
 st.set_page_config(
     page_title="Pengolahan Citra Digital",  
     page_icon="logo.webp",
 )
 st.logo("assets/LOGO_UNESA.png")
+
+def encrypt(plaintext, key, type = "vigenere", ):
+    ciphertext = ""
+    
+    if type == "vigenere":
+        key_length = len(key)
+
+        for i, char in enumerate(plaintext):
+            if char.isalpha():
+                shift           = ord(key[i % key_length].upper()) - ord('A')
+                encrypted_char  = chr((ord(char.upper()) - ord('A') + shift) % 26 + ord('A'))
+                ciphertext     += encrypted_char
+            else: 
+                ciphertext     += char
+            
+    return ciphertext
+
+def decrypt(ciphertext, key, type = "vigenere"):
+    plaintext = ""
+    
+    if type == "vigenere":
+        key_length = len(key)
+
+        for i, char in enumerate(ciphertext):
+            if char.isalpha():
+                shift           = ord(key[i % key_length].upper()) - ord('A')
+                decrypted_char  = chr((ord(char.upper()) - ord('A') - shift) % 26 + ord('A'))
+                plaintext       += decrypted_char
+            else:
+                plaintext       += char
+    
+    return plaintext
 
 def cryptograhy_explanation():
     st.write("")
@@ -55,7 +100,7 @@ def cryptograhy_explanation():
             st.subheader("ROT13")
             st.info("Setiap huruf digantikan dengan huruf yang letaknya 13 posisi darinya[cite: 35].")
             st.latex(r"M = ROT13(ROT13(M))")
-            st.caption("Melakukan ROT13 dua kali akan mengembalikan pesan ke semula[cite: 42].")
+            st.write("Melakukan ROT13 dua kali akan mengembalikan pesan ke semula[cite: 42].")
     
     st.write("")
     st.markdown("## 🧬 Vigenere Cipher")
@@ -91,7 +136,7 @@ def cryptograhy_explanation():
         """)
 
 def vigenere_conversion():
-    st.write("")
+    # st.write("")
     st.markdown("## 🔄 Konversi Teks: Vigenere Cipher")
     st.write("""
     Di sini, Anda dapat mencoba mengonversi teks biasa (*plaintext*) menjadi teks rahasia (*ciphertext*) menggunakan Vigenere Cipher.
@@ -106,36 +151,109 @@ def vigenere_conversion():
         ciphertext = ""
         
         if st.button("Enkripsi"):
-            key_length = len(key)
-            
-            for i, char in enumerate(plaintext):
-                if char.isalpha():
-                    shift = ord(key[i % key_length].upper()) - ord('A')
-                    encrypted_char = chr((ord(char.upper()) - ord('A') + shift) % 26 + ord('A'))
-                    ciphertext += encrypted_char
-                else:
-                    ciphertext += char
+            ciphertext = encrypt(plaintext, key)            
     
     with decrypt_section:
-        ciphertext_input = st.text_area("Masukkan Ciphertext", "URYYB JBEYQ")
+        ciphertext_input = st.text_area("Masukkan Ciphertext", "BRPDO JSJLX")
         decrypted_text = ""
         
         if st.button("Dekripsi"):
-            key_length = len(key)
-            
-            for i, char in enumerate(ciphertext_input):
-                if char.isalpha():
-                    shift = ord(key[i % key_length].upper()) - ord('A')
-                    decrypted_char = chr((ord(char.upper()) - ord('A') - shift) % 26 + ord('A'))
-                    decrypted_text += decrypted_char
-                else:
-                    decrypted_text += char
-            
+            decrypted_text = decrypt(ciphertext_input, key, type="vigenere")
     
     if ciphertext:
-        st.success(f"Ciphertext: {ciphertext}")
+        st.success(f"Ciphertext: **{ciphertext}**")
+        
+        with st.expander("Lihat Proses Enkripsi dan Penjelasan Kode"):
+            key_chars = [key[i % len(key)] for i in range(len(plaintext))]
+        
+            st.markdown("### 🗺️ Visual Proses Enkripsi")
+            st.write("Tabel di bawah menunjukkan bagaimana setiap karakter plaintext dipetakan ke ciphertext menggunakan key.")
+        
+            encrypt_df_chars = pd.DataFrame({
+                "Plaintext" : list(plaintext),
+                "Key"       : key_chars,
+                "Ciphertext": list(ciphertext)
+            }).T
+            
+            st.table(encrypt_df_chars)
+            
+            st.write("")
+            st.write("Tabel dibawah menunjukkan setiap konversi enkripsi vigenere menggunakan analogi angka (A=0, B=1, ..., Z=25).")
+            
+            encrypt_df_numerics = pd.DataFrame({
+                "Plaintext" : [ord(c.upper()) - ord('A') if c.isalpha() else c for c in list(plaintext)],
+                "Key"       : [f"+{ord(k.upper()) - ord('A')}" if k.isalpha() else k for k in key_chars],
+                "Ciphertext": [ord(c.upper()) - ord('A') if c.isalpha() else c for c in list(ciphertext)]
+            }).T
+
+            st.table(encrypt_df_numerics)
+            
+            st.markdown("### ⚙️ Penjelasan Kode Enkripsi")
+            
+            st.code("""ciphertext = ""
+key_length = len(key)
+
+for i, char in enumerate(plaintext):
+    if char.isalpha():
+        shift           = ord(key[i % key_length].upper()) - ord('A')
+        encrypted_char  = chr((ord(char.upper()) - ord('A') + shift) % 26 + ord('A'))
+        ciphertext     += encrypted_char
+    else: 
+        ciphertext     += char""", language="python")
+            st.write("""
+**Logika Pemrosesan Enkripsi:**
+* **`enumerate(plaintext)`**: Digunakan untuk mendapatkan karakter sekaligus indeksnya (`i`) agar kita bisa menentukan posisi kunci yang tepat.
+* **Modulo Operator (`%`)**: Memastikan kunci dapat diulang secara terus-menerus (*polyalphabetic*) jika panjang pesan melebihi panjang kunci.
+* **Transformasi ASCII**: Fungsi `ord()` mengubah karakter menjadi nilai integer. Kita mengurangi dengan `ord('A')` untuk mendapatkan indeks alfabet (0-25) .
+* **Operasi Penjumlahan**: Sesuai rumus matematis $C_i = (P_i + K_i) \pmod{26}$, nilai pergeseran kunci ditambahkan ke karakter asli.
+""")
+            
     if decrypted_text:
-        st.success(f"Decrypted Text: {decrypted_text}") 
+        st.success(f"Decrypted Text: **{decrypted_text}**") 
+        
+        with st.expander("Lihat Proses Dekripsi dan Penjelasan Kode"):
+            key_chars = [key[i % len(key)] for i in range(len(ciphertext_input))]
+        
+            st.markdown("### 🗺️ Visual Proses Dekripsi")
+            st.write("Tabel di bawah menunjukkan bagaimana setiap karakter cipher diubah kembali ke plaintext menggunakan key.")
+        
+            decrypt_df_chars = pd.DataFrame({
+                "Cipher Text"   : list(ciphertext_input),
+                "Key"           : key_chars,
+                "Decrypted Text": list(decrypted_text)
+            }).T
+            
+            st.table(decrypt_df_chars)
+            
+            st.write("")
+            st.write("Tabel dibawah menunjukkan setiap konversi dekripsi vigenere menggunakan analogi angka (A=0, B=1, ..., Z=25).")
+            
+            decrypt_df_numerics = pd.DataFrame({
+                "Cipher Text"   : [ord(c.upper()) - ord('A') if c.isalpha() else c for c in list(ciphertext_input)],
+                "Key"           : [f"-{ord(k.upper()) - ord('A')}" if k.isalpha() else k for k in key_chars],
+                "Decrypted Text": [ord(c.upper()) - ord('A') if c.isalpha() else c for c in list(decrypted_text)]
+            }).T
+
+            st.table(decrypt_df_numerics)
+            
+            st.markdown("### ⚙️ Penjelasan Kode Dekripsi")
+            
+            st.code("""plaintext = ""
+key_length = len(key)
+
+for i, char in enumerate(ciphertext):
+    if char.isalpha():
+        shift           = ord(key[i % key_length].upper()) - ord('A')
+        decrypted_char  = chr((ord(char.upper()) - ord('A') - shift) % 26 + ord('A'))
+        plaintext       += decrypted_char
+    else:
+        plaintext       += char""", language="python")
+            st.write("""
+**Logika Pemrosesan Dekripsi:**
+* **Proses Inversi**: Dekripsi merupakan proses kebalikan dari enkripsi. Jika enkripsi menggunakan penjumlahan, maka dekripsi menggunakan **pengurangan** terhadap nilai pergeseran kunci.
+* **Koreksi Modulo**: Penggunaan `% 26` sangat krusial di sini. Jika hasil pengurangan bernilai negatif, operasi modulo akan otomatis mengembalikannya ke posisi alfabet yang benar (memutar ke belakang).
+* **Preservasi Karakter**: Kondisi `else` memastikan bahwa karakter non-alfabet (seperti spasi atau simbol) tidak ikut dienkripsi/dekripsi agar struktur pesan asli tetap terjaga.
+""")
 
 def home():
     st.title("👤 Home Page")
@@ -150,7 +268,6 @@ def Kriptografi():
     """)
     
     explanation, conversion = st.tabs(["Penjelasan", "Konversi Teks: Vigenere Cipher"])
-    
     with explanation:
         cryptograhy_explanation()
         
