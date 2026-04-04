@@ -4,8 +4,8 @@ import sys
 #! --- REDIRECT JIKA TIDAK PUNYA STREAMLIT ATAU RUN TANPA STREAMLIT ---
 def redirect_to_web():
     print("🚀 Library Streamlit tidak ditemukan atau dijalankan sebagai script biasa.")
-    print("Mengarahkan ke: https://matkul-semester4-maliq.streamlit.app/")
-    webbrowser.open("https://matkul-semester4-maliq.streamlit.app/Keamanan_Data")
+    print("Mengarahkan ke: https://matkul-semester4-maliqr.streamlit.app/")
+    webbrowser.open("https://matkul-semester4-maliqr.streamlit.app/Keamanan_Data")
     sys.exit()
 
 try:
