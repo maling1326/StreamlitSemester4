@@ -4,6 +4,42 @@ import cv2 as cv
 import zipfile
 import io
 
+#* --- GLOBAL IMAGE PROCESSING ---
+
+@st.cache_data
+def CAPFULLHD(img):
+    max_dim = 1080
+    h, w = img.shape[:2]
+    if h > max_dim or w > max_dim:
+        if h > w:
+            new_h, new_w = max_dim, int(w * max_dim / h)
+        else:
+            new_h, new_w = int(h * max_dim / w), max_dim
+        img = cv.resize(img, (new_w, new_h), interpolation=cv.INTER_AREA)
+    
+    return img
+
+#* --- FOR LECTURE 4 ---
+
+@st.cache_data(show_spinner=True)
+def rgb2gray_3method(rgb_img):
+    imgHeight, imgWidth = rgb_img.shape[:2]
+            
+    grayscale_lightness  = np.zeros((imgHeight, imgWidth), dtype=np.uint8)
+    grayscale_average    = np.zeros((imgHeight, imgWidth), dtype=np.uint8) 
+    grayscale_luminosity = np.zeros((imgHeight, imgWidth), dtype=np.uint8) 
+            
+    for y in range(imgHeight):
+        for x in range(imgWidth):
+            r, g, b  = rgb_img[ y , x ]
+                    
+            grayscale_lightness [ y , x ] = int( ( int(max( [r , g , b] )) + int(min( [r , g , b] )) )  / 2 )
+            grayscale_average   [ y , x ] = int( ( int(r) + int(g) + int(b) ) / 3 )
+            grayscale_luminosity[ y , x ] = int( (0.21 * r) + (0.72 * g) + (0.07 * b) )
+    return grayscale_lightness, grayscale_average, grayscale_luminosity
+
+#* --- FOR LECTURE 6 ---
+
 @st.cache_data(show_spinner=True)
 def process_cmy(rgb_img):
     ChWhite = np.full_like(rgb_img[:,:,1], 255)

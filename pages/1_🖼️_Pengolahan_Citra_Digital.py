@@ -41,7 +41,118 @@ RGB_img = None
 ChBlack = None
 
 # =========================================================
-# FUNGSI CACHING UNTUK PEMROSESAN CITRA (PERFORMA TINGGI)
+# FUNGSI UTILITAS UI & PENGUNDUHAN
+# =========================================================
+
+def render_numbering(number, description, color="#ffffff"):
+    bg_color = f"{color}22" 
+    html_code = f"""
+    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px; margin-top: 5px;">
+        <div style="
+            background-color: {bg_color}; 
+            color: {color}; 
+            width: 40px; 
+            height: 40px; 
+            border-radius: 50%; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 20px; 
+            font-weight: bold;
+            border: 2px solid {color};
+            flex-shrink: 0;
+        ">
+            {number}
+        </div>
+        <div style="
+            font-size: 1.3em; 
+            font-weight: bold; 
+            color: white; 
+            text-transform: capitalize;
+        ">
+            {description}
+        </div>
+    </div>
+    """
+    return st.markdown(html_code, unsafe_allow_html=True)
+
+def img_download_button(img, buttonText, filename, buttonType=2, reverse_channels=True):
+    curr_img = img.copy()
+    if reverse_channels:
+        if len(curr_img.shape) == 3:
+            channels = curr_img.shape[2]
+            if channels == 3:
+                x, y, z = cv.split(curr_img)
+                curr_img = cv.merge((z, y, x))
+            elif channels == 4:
+                x, y, z, w = cv.split(curr_img)
+                curr_img = cv.merge((w, z, y, x))
+    
+    _, buffer = cv.imencode('.jpg', curr_img)
+    byte_im = buffer.tobytes()
+    
+    st.write("")
+    button_type = None
+    if buttonType == 1:
+        button_type = "primary"
+    elif buttonType == 2:
+        button_type = "secondary"
+    elif buttonType == 3:
+        button_type = "tertiary"
+    
+    st.download_button(
+        label               = buttonText,
+        data                = byte_im,
+        file_name           = f"{filename}.jpg",
+        mime                = "image/jpeg",
+        use_container_width = True,
+        key                 = f"btn_{filename}",
+        type                = button_type
+    )
+
+def img_download_button_zip(imgs, buttonText, zip_filename, filenames, buttonType=3, reverse_channels=True):
+    if not isinstance(imgs, list): imgs = [imgs]
+    if not isinstance(filenames, list): filenames = [filenames]
+    
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for img, fname in zip(imgs, filenames):
+            curr_img = img.copy()
+            if reverse_channels:
+                if len(curr_img.shape) == 3:
+                    channels = curr_img.shape[2]
+                    if channels == 3:
+                        x, y, z = cv.split(curr_img)
+                        curr_img = cv.merge((z, y, x))
+                    elif channels == 4:
+                        x, y, z, w = cv.split(curr_img)
+                        curr_img = cv.merge((w, z, y, x))
+            
+            success, buffer = cv.imencode('.jpg', curr_img)
+            if success:
+                # st.image(buffer.tobytes(), caption=fname) #! DEBUGGING PURPOSE
+                zip_file.writestr(f"{fname}.jpg", buffer.tobytes())
+    
+    st.write("")
+    if buttonType == 1:
+        button_type = "primary"
+    elif buttonType == 2:
+        button_type = "secondary"
+    else:
+        button_type = "tertiary"
+    
+    st.download_button(
+        label               = buttonText,
+        data                = zip_buffer.getvalue(),
+        file_name           = f"{zip_filename}.zip",
+        mime                = "application/zip",
+        use_container_width = True,
+        type                = button_type
+    )
+
+# =========================================================
+# FUNGSI MATERI 6
 # =========================================================
 
 # @st.cache_data(show_spinner=True)
@@ -85,16 +196,16 @@ def rgb_conversion(RGB_img):
             
             left, right = st.columns(2)
             with left:
-                download_button(NORM_CMY_img, "Download Hasil Normalisasi CMY", "Hasil_Normalisasi_CMY")
+                img_download_button(NORM_CMY_img, "Download Hasil Normalisasi CMY", "Hasil_Normalisasi_CMY")
             with right:
-                download_button_zip(
+                img_download_button_zip(
                     imgs         = [RGB_img, CMY_img, NORM_CMY_img, c_visual, m_visual, y_visual],
                     filenames    = ["Original_RGB", "Hasil_Konversi_RGB_ke_CMY", "Hasil_Normalisasi_CMY", "Channel_C", "Channel_M", "Channel_Y"],
                     buttonText   = "Download Semua Channel **(ZIP)**",
                     zip_filename = "Kumpulan_Hasil_Konversi_RGB_ke_CMY",
                     buttonType   = 2
                 )   
-            download_button(CMY_img, "Download Hasil Konversi CMY", "Hasil_Konversi_RGB_ke_CMY", 1)
+            img_download_button(CMY_img, "Download Hasil Konversi CMY", "Hasil_Konversi_RGB_ke_CMY", 1)
                 
         st.write("")
         
@@ -142,16 +253,16 @@ CMYK_img = cv.merge((c, m, y)).astype(np.uint8)""", language='python')
             
             left, right = st.columns(2)
             with left:
-                download_button(NORM_CMYK_img, "Download Hasil Normalisasi CMYK", "Hasil_Normalisasi_CMYK")
+                img_download_button(NORM_CMYK_img, "Download Hasil Normalisasi CMYK", "Hasil_Normalisasi_CMYK")
             with right:
-                download_button_zip(
+                img_download_button_zip(
                     imgs         = [RGB_img, CMYK_img, NORM_CMYK_img, c_visual, m_visual, y_visual, k_visual],
                     filenames    = ["Original_RGB", "Hasil_Konversi_RGB_ke_CMYK", "Hasil_Normalisasi_CMYK", "Channel_C", "Channel_M", "Channel_Y", "Channel_K"],
                     buttonText   = "Download Semua Channel **(ZIP)**",
                     zip_filename = "Kumpulan_Hasil_Konversi_RGB_ke_CMYK",
                     buttonType   = 2
                 ) 
-            download_button(CMYK_img, "Download Hasil Konversi CMYK", "Hasil_Konversi_RGB_ke_CMYK", 1)
+            img_download_button(CMYK_img, "Download Hasil Konversi CMYK", "Hasil_Konversi_RGB_ke_CMYK", 1)
         
         st.write("")
         
@@ -220,16 +331,16 @@ HSI_img = cv.merge((H_vis, S_vis, I_vis))""", language='python')
             st.info("✅ Konversi HSI dapat diunduh di bawah ini:")
             left, right = st.columns(2)
             with left:
-                download_button(NORM_HSI_img, "Download Hasil Normalisasi HSI", "Hasil_Normalisasi_HSI")
+                img_download_button(NORM_HSI_img, "Download Hasil Normalisasi HSI", "Hasil_Normalisasi_HSI")
             with right:
-                download_button_zip(
+                img_download_button_zip(
                     imgs         = [RGB_img, HSI_img, NORM_HSI_img, h, s, i],
                     filenames    = ["Original_RGB", "Hasil_Konversi_RGB_ke_HSI", "Hasil_Normalisasi_HSI", "Channel_Hue", "Channel_Saturation", "Channel_Intensity"],
                     buttonText   = "Download Semua Channel **(ZIP)**",
                     zip_filename = "Kumpulan_Hasil_Konversi_RGB_ke_HSI",
                     buttonType   = 2
                 )
-            download_button(HSI_img, "Download Hasil Konversi HSI", "Hasil_Konversi_RGB_ke_HSI", 1)
+            img_download_button(HSI_img, "Download Hasil Konversi HSI", "Hasil_Konversi_RGB_ke_HSI", 1)
         
         st.write("")
         
@@ -278,16 +389,16 @@ YUV_img = np.clip(YUV_img, 0, 255).astype(np.uint8)""", language="python")
             st.info("✅ Konversi YUV dapat diunduh di bawah ini:")
             left, right = st.columns(2)
             with left:
-                download_button(NORM_YUV_img, "Download Hasil Normalisasi YUV", "Hasil_Normalisasi_YUV")
+                img_download_button(NORM_YUV_img, "Download Hasil Normalisasi YUV", "Hasil_Normalisasi_YUV")
             with right:
-                download_button_zip(
+                img_download_button_zip(
                     imgs         = [RGB_img, YUV_img, NORM_YUV_img, y_ch, u_ch, v_ch],
                     filenames    = ["Original_RGB", "Hasil_Konversi_RGB_ke_YUV", "Hasil_Normalisasi_YUV", "Channel_Y", "Channel_U", "Channel_V"],
                     buttonText   = "Download Semua Channel **(ZIP)**",
                     zip_filename = "Kumpulan_Hasil_Konversi_RGB_ke_YUV",
                     buttonType   = 2
                 )
-            download_button(YUV_img, "Download Hasil Konversi YUV", "Hasil_Konversi_RGB_ke_YUV", 1)
+            img_download_button(YUV_img, "Download Hasil Konversi YUV", "Hasil_Konversi_RGB_ke_YUV", 1)
         
         st.write("")
         
@@ -338,16 +449,16 @@ YCbCr_img = np.clip(YCbCr_img, 0, 255).astype(np.uint8)""", language="python")
             st.info("✅ Konversi YCbCr dapat diunduh di bawah ini:")
             left, right = st.columns(2)
             with left:
-                download_button(NORM_YCbCr_img, "Download Hasil Normalisasi YCbCr", "Hasil_Normalisasi_YCbCr")
+                img_download_button(NORM_YCbCr_img, "Download Hasil Normalisasi YCbCr", "Hasil_Normalisasi_YCbCr")
             with right:
-                download_button_zip(
+                img_download_button_zip(
                     imgs         = [RGB_img, YCbCr_img, NORM_YCbCr_img, y_ch, cb_ch, cr_ch],
                     filenames    = ["Original_RGB", "Hasil_Konversi_RGB_ke_YCbCr", "Hasil_Normalisasi_YCbCr", "Channel_Y", "Channel_Cb", "Channel_Cr"],
                     buttonText   = "Download Semua Channel **(ZIP)**",
                     zip_filename = "Kumpulan_Hasil_Konversi_RGB_ke_YCbCr",
                     buttonType   = 2
                 )
-            download_button(YCbCr_img, "Download Hasil Konversi YCbCr", "Hasil_Konversi_RGB_ke_YCbCr", 1)
+            img_download_button(YCbCr_img, "Download Hasil Konversi YCbCr", "Hasil_Konversi_RGB_ke_YCbCr", 1)
 
 def image_smoothing(RGB_img):
     st.write("Menerapkan filter smoothing pada citra berwarna dengan dua metode: `Intensity Slicing` dan `RGB Channel Smoothing`.")
@@ -414,7 +525,7 @@ smoothed_RGB_img = cv.merge((r_smooth, g_smooth, b_smooth)).astype(np.uint8)""",
             
             left, right = st.columns(2)
             with left:
-                download_button_zip(
+                img_download_button_zip(
                     imgs         = [RGB_img       , smoothed_RGB_img     , r, g, b],
                     filenames    = ["Original_RGB", "Hasil_Smoothing_RGB", "Channel_R"            , "Channel_G"            , "Channel_B"],
                     buttonText   = "Download Semua Channel **(ZIP)**",
@@ -422,7 +533,7 @@ smoothed_RGB_img = cv.merge((r_smooth, g_smooth, b_smooth)).astype(np.uint8)""",
                     buttonType   = 2
                 )   
             with right:
-                download_button(smoothed_RGB_img, "Download Hasil Normalisasi RGB", "Hasil_Normalisasi_RGB", 1)
+                img_download_button(smoothed_RGB_img, "Download Hasil Normalisasi RGB", "Hasil_Normalisasi_RGB", 1)
 
         st.write("")
         
@@ -475,7 +586,7 @@ smoothed_HSI_img = cv.merge((HSI_img[:,:,0], HSI_img[:,:,1], smooth_I))""", lang
             
             left, right = st.columns(2)
             with left:
-                download_button_zip(
+                img_download_button_zip(
                     imgs         = [RGB_img       , smoothed_HSI_img                , smoothed_NORM_HSI_img            , smoothed_HSI_img[:,:,0], smoothed_HSI_img[:,:,1], i                  ],
                     filenames    = ["Original_RGB", "Hasil_Smoothing_Intensitas_HSI", "Hasil_Normalisasi_Smoothing_HSI", "Channel_Hue"          , "Channel_Saturation"   , "Channel_Intensity"],
                     buttonText   = "Download Semua Channel **(ZIP)**",
@@ -483,7 +594,7 @@ smoothed_HSI_img = cv.merge((HSI_img[:,:,0], HSI_img[:,:,1], smooth_I))""", lang
                     buttonType   = 2
                 )   
             with right:
-                download_button(smoothed_NORM_HSI_img, "Download Hasil Smoothing HSI", "Hasil_Smoothing_HSI", 1)
+                img_download_button(smoothed_NORM_HSI_img, "Download Hasil Smoothing HSI", "Hasil_Smoothing_HSI", 1)
 
 def image_sharpening(RGB_img):
     st.write("Menerapkan filter sharpening pada citra berwarna dengan dua metode: `Intensity Slicing` dan `RGB Channel Sharpening`.")
@@ -539,7 +650,7 @@ sharpened_RGB_img = np.clip(res, 0, 255).astype(np.uint8)""", language="python")
 
             left, right = st.columns(2)
             with left:
-                download_button_zip(
+                img_download_button_zip(
                     imgs         = [RGB_img       , sharpened_RGB_img     , r           , g          , b          ],
                     filenames    = ["Original_RGB", "Hasil_Sharpening_RGB", "Channel_R" , "Channel_G", "Channel_B"],
                     buttonText   = "Download Semua Channel **(ZIP)**",
@@ -547,7 +658,7 @@ sharpened_RGB_img = np.clip(res, 0, 255).astype(np.uint8)""", language="python")
                     buttonType   = 2
                 )   
             with right:
-                download_button(sharpened_RGB_img, "Download Hasil Sharpening RGB", "Hasil_Sharpening_RGB", 1)
+                img_download_button(sharpened_RGB_img, "Download Hasil Sharpening RGB", "Hasil_Sharpening_RGB", 1)
 
 
         #*========================================
@@ -591,7 +702,7 @@ sharpened_HSI_img = cv.merge((HSI_img[:,:,0], HSI_img[:,:,1], sharp_i))""", lang
                 
             left, right = st.columns(2)
             with left:
-                download_button_zip(
+                img_download_button_zip(
                     imgs         = [RGB_img       , sharpened_HSI_img                , sharpened_NORM_HSI_img            , sharpened_HSI_img[:,:,0], sharpened_HSI_img[:,:,1], sharpened_HSI_img[:,:,2]],
                     filenames    = ["Original_RGB", "Hasil_Sharpening_Intensitas_HSI", "Hasil_Normalisasi_Sharpening_HSI", "Channel_Hue"           , "Channel_Saturation"    , "Channel_Intensity"     ],
                     buttonText   = "Download Semua Channel **(ZIP)**",
@@ -599,7 +710,7 @@ sharpened_HSI_img = cv.merge((HSI_img[:,:,0], HSI_img[:,:,1], sharp_i))""", lang
                     buttonType   = 2
                 )   
             with right:
-                download_button(sharpened_NORM_HSI_img, "Download Hasil Sharpening HSI", "Hasil_Sharpening_HSI", 1)                    
+                img_download_button(sharpened_NORM_HSI_img, "Download Hasil Sharpening HSI", "Hasil_Sharpening_HSI", 1)                    
 
 # =========================================================
 # FUNGSI APLIKASI UTAMA
@@ -646,25 +757,98 @@ def home():
     st.write("")
 
 def course_4():
-    def get_user_name():
-        return 'John'
+    with st.sidebar:
+        image_2 = st.file_uploader("Upload Gambar Kedua", type=["jpeg", "jpg", "png"], key="image_2")
     
-    with st.echo():
-        def get_punctuation():
-            return '!!!'
-    
-        greeting = "Hi there, "
-        value = get_user_name()
-        punctuation = get_punctuation()
-    
-        st.write(greeting, value, punctuation)
-    
-    foo = 'bar'
-    st.write('Done!')
+    if image_2 is not None:
+        file_bytes_2 = np.asarray(bytearray(image_2.read()), dtype=np.uint8)
+        img_2 = cv.imdecode(file_bytes_2, 1)
+        img_2 = CAPFULLHD(img_2)
+        
+        RGB_img_2 = cv.cvtColor(img_2, cv.COLOR_BGR2RGB)
+
+    if RGB_img is None:
+        st.warning("Please upload image first")
+    else: 
+        RGB2GRAY, TRANSFORMATIONS, BITPLANESLICING, SUBSTRACTION, LOGIC = st.tabs(["RGB To Gray", "Basic Image Transformation", "Bit-Plane Slicing", "Arithmatic Operation *(Substraction)*", "Logic"])
+        
+        with RGB2GRAY:
+            st.write("Mengubah citra RGB menjadi citra Grayscale dengan 3 metode berbeda: `Lightness Method`, `Average Method`, dan `Luminosity Method`.")
+            st.write("")
+            
+            grayscale_lightness, grayscale_average, grayscale_luminosity = rgb2gray_3method(RGB_img)
+        
+            with st.container(border=True):
+                render_numbering(1, "Ligthness Method", "#ccf38d")
+                ORI, GRAY = st.columns(2)                
+                with ORI: st.image(RGB_img, caption="Original Image")
+                with GRAY: st.image(grayscale_lightness, caption="Grayscale: `Lightness Method`")
+                img_download_button(grayscale_lightness, "Download Hasil Grayscale: *Lightness Method*", "RGB_ke_GRAYSCALE_LightnessMethod")
+            
+            with st.container(border=True):
+                render_numbering(2, "Average Method", "#8df3d4")
+                ORI, GRAY = st.columns(2)                
+                with ORI: st.image(RGB_img, caption="Original Image")
+                with GRAY: st.image(grayscale_average, caption="Grayscale: `Average Method`")
+                img_download_button(grayscale_average, "Download Hasil Grayscale: *Average Method*", "RGB_ke_GRAYSCALE_AverageMethod")
+            
+            with st.container(border=True):
+                render_numbering(3, "Luminosity Method", "#a38df3")
+                ORI, GRAY = st.columns(2)                
+                with ORI: st.image(RGB_img, caption="Original Image")
+                with GRAY: st.image(grayscale_luminosity, caption="Grayscale: `Luminosity Method`")
+                img_download_button(grayscale_luminosity, "Download Hasil Grayscale: *Luminosity Method*", "RGB_ke_GRAYSCALE_LuminosityMethod")
+            
+            st.divider()
+            
+            st.markdown("### Perbandingan Side-by-Side")
+            light, avg, lumin = st.columns(3)
+            with light: st.image(grayscale_lightness,   "*Lightness Method*")
+            with avg  : st.image(grayscale_average,     "*Average Method*")
+            with lumin: st.image(grayscale_luminosity,  "*Luminosity Method*")
+            
+            with st.expander("Penjelasan Kode"):
+                st.markdown("### Penjelasan Kode")
+                
+                st.code("""imgHeight, imgWidth = rgb_img.shape[:2]
+            
+grayscale_lightness  = np.zeros((imgHeight, imgWidth), dtype=np.uint8)
+grayscale_average    = np.zeros((imgHeight, imgWidth), dtype=np.uint8) 
+grayscale_luminosity = np.zeros((imgHeight, imgWidth), dtype=np.uint8) 
+        
+for y in range(imgHeight):
+    for x in range(imgWidth):
+        r, g, b  = rgb_img[ y , x ]
+                
+        grayscale_lightness [ y , x ] = int( ( int(max( [r , g , b] )) + int(min( [r , g , b] )) )  / 2 )
+        grayscale_average   [ y , x ] = int( ( int(r) + int(g) + int(b) ) / 3 )
+        grayscale_luminosity[ y , x ] = int( (0.21 * r) + (0.72 * g) + (0.07 * b) )""", language="python")
+            
+            st.write("")
+            with st.container(border=False):
+                st.markdown("### Download Hasil")
+                st.caption("Gambar Hasil Konversi Grayscale bisa didownload dengan tombol dibawah ini")
+                
+                light, avg, lumin = st.columns(3)
+                with light: img_download_button(grayscale_lightness,  "Download Grayscale: \n*Lightness Method*", "Konversi_Grayscale_lightnessMethod")
+                with avg  : img_download_button(grayscale_average,    "Download Grayscale: \n*Average Method*", "Konversi_Grayscale_averageMethod")
+                with lumin: img_download_button(grayscale_luminosity, "Download Grayscale: \n*Luminosity Method*", "Konversi_Grayscale_luminosityMethod")
+                img_download_button_zip(
+                    buttonType   = 1,
+                    zip_filename = "Kumpulan_Hasil_Konversi_Grayscale_3_Metode",
+                    buttonText   = "Download Kumpulan Hasil Konversi Grayscale (*.zip*)",
+                    imgs         =  [grayscale_average, grayscale_lightness, grayscale_luminosity],
+                    filenames    =  ["Konversi_Grayscale_lightnessMethod", "Konversi_Grayscale_averageMethod", "Konversi_Grayscale_luminosityMethod"]
+                )
+            
+            
 
 def course_5():
     
-    st.write('Done!')
+    if RGB_img is None:
+        st.warning("Please upload image first")
+    else: 
+        st.image(RGB_img)
 
 def course_6():
     # --- HEADER DEKORATIF ---
@@ -772,111 +956,6 @@ def course_6():
         image_sharpening(RGB_img)
         
 # =========================================================
-# FUNGSI UTILITAS UI & PENGUNDUHAN
-# =========================================================
-
-def render_numbering(number, description, color="#ffffff"):
-    bg_color = f"{color}22" 
-    html_code = f"""
-    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px; margin-top: 5px;">
-        <div style="
-            background-color: {bg_color}; 
-            color: {color}; 
-            width: 40px; 
-            height: 40px; 
-            border-radius: 50%; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            font-size: 20px; 
-            font-weight: bold;
-            border: 2px solid {color};
-            flex-shrink: 0;
-        ">
-            {number}
-        </div>
-        <div style="
-            font-size: 1.3em; 
-            font-weight: bold; 
-            color: white; 
-            text-transform: capitalize;
-        ">
-            {description}
-        </div>
-    </div>
-    """
-    return st.markdown(html_code, unsafe_allow_html=True)
-
-def download_button(img, buttonText, filename, buttonType=2, reverse_channels=True):
-    curr_img = img.copy()
-    if reverse_channels:
-        if len(curr_img.shape) == 3:
-            channels = curr_img.shape[2]
-            if channels == 3:
-                x, y, z = cv.split(curr_img)
-                curr_img = cv.merge((z, y, x))
-            elif channels == 4:
-                x, y, z, w = cv.split(curr_img)
-                curr_img = cv.merge((w, z, y, x))
-    
-    _, buffer = cv.imencode('.jpg', curr_img)
-    byte_im = buffer.tobytes()
-    
-    st.write("")
-    button_type = "secondary" if buttonType == 2 else "primary"
-    
-    st.download_button(
-        label               = buttonText,
-        data                = byte_im,
-        file_name           = f"{filename}.jpg",
-        mime                = "image/jpeg",
-        use_container_width = True,
-        key                 = f"btn_{filename}",
-        type                = button_type
-    )
-
-def download_button_zip(imgs, buttonText, zip_filename, filenames, buttonType=3, reverse_channels=True):
-    if not isinstance(imgs, list): imgs = [imgs]
-    if not isinstance(filenames, list): filenames = [filenames]
-    
-    zip_buffer = io.BytesIO()
-    
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for img, fname in zip(imgs, filenames):
-            curr_img = img.copy()
-            if reverse_channels:
-                if len(curr_img.shape) == 3:
-                    channels = curr_img.shape[2]
-                    if channels == 3:
-                        x, y, z = cv.split(curr_img)
-                        curr_img = cv.merge((z, y, x))
-                    elif channels == 4:
-                        x, y, z, w = cv.split(curr_img)
-                        curr_img = cv.merge((w, z, y, x))
-            
-            success, buffer = cv.imencode('.jpg', curr_img)
-            if success:
-                # st.image(buffer.tobytes(), caption=fname) #! DEBUGGING PURPOSE
-                zip_file.writestr(f"{fname}.jpg", buffer.tobytes())
-    
-    st.write("")
-    if buttonType == 1:
-        button_type = "primary"
-    elif buttonType == 2:
-        button_type = "secondary"
-    else:
-        button_type = "tertiary"
-    
-    st.download_button(
-        label               = buttonText,
-        data                = zip_buffer.getvalue(),
-        file_name           = f"{zip_filename}.zip",
-        mime                = "application/zip",
-        use_container_width = True,
-        type                = button_type
-    )
-
-# =========================================================
 # ROUTING DASHBOARD SIDEBAR
 # =========================================================
 
@@ -900,25 +979,14 @@ with st.sidebar:
     st.divider()
 
     selectedCourse = st.selectbox("Pilih Materi", list(courses_page.keys()))
-    image = st.file_uploader("Upload Gambar", type=["jpeg", "jpg", "png"])
+    image = st.file_uploader("Upload Gambar", type=["jpeg", "jpg", "png"], key="image_1")
 
 if image is not None:
     file_bytes = np.asarray(bytearray(image.read()), dtype=np.uint8)
     img = cv.imdecode(file_bytes, 1)
-    
-    # --- LOGIKA AUTO-RESIZE CAP 1080p ---
-    max_dim = 1080
-    h, w = img.shape[:2]
-    if h > max_dim or w > max_dim:
-        if h > w:
-            new_h, new_w = max_dim, int(w * max_dim / h)
-        else:
-            new_h, new_w = int(h * max_dim / w), max_dim
-        img = cv.resize(img, (new_w, new_h), interpolation=cv.INTER_AREA)
-    # ------------------------------------
+    img = CAPFULLHD(img)
     
     RGB_img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-    
     ChBlack = np.full_like(RGB_img[:,:,1], 0)
 
 courses_page[selectedCourse]()
