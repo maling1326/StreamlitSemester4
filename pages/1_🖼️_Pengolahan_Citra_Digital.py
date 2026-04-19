@@ -15,6 +15,7 @@ try:
 except ImportError:
     redirect_to_web()
 
+import pandas as pd
 import numpy as np
 import cv2 as cv
 import zipfile
@@ -840,8 +841,6 @@ for y in range(imgHeight):
                     imgs         =  [grayscale_average, grayscale_lightness, grayscale_luminosity],
                     filenames    =  ["Konversi_Grayscale_lightnessMethod", "Konversi_Grayscale_averageMethod", "Konversi_Grayscale_luminosityMethod"]
                 )
-            
-            
 
 def course_5():
     
@@ -955,6 +954,181 @@ def course_6():
     with sharpening:
         image_sharpening(RGB_img)
         
+def course_7():
+    st.markdown("""
+        <div style="background-color:#2e3136; padding:20px; border-radius:10px; border-left: 8px solid #00BCD4;">
+            <h1 style="margin:0;">Morfologi Citra Biner</h1>
+            <p style="color:#888; margin:5px 0 0 0;">Ringkasan Modul Slide-06 • Pengolahan Citra Digital</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    matrix = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 1, 1, 0, 0, 1, 0, 0, 0],
+              [0, 0, 0, 1, 1, 1, 1, 1, 0, 0],
+              [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
+              [0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
+              [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
+              [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+    
+    def apply_binary_style(val):
+        if val == 0: return 'background-color: black; color: white;'
+        else       : return 'background-color: white; color: black;'
+
+    src_image = np.array(matrix, dtype=np.uint8)
+    
+    _, img     = cv.threshold(src_image, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+    scaled_img = cv.resize(img, (400, 400), interpolation=cv.INTER_NEAREST)
+    
+    df = pd.DataFrame(matrix)
+    styled_df = df.style.map(apply_binary_style)
+    
+    st.subheader("Pilih Metode Morfologi Citra Biner")
+    DILATE, ERODE, CLOSING, OPENING = st.tabs(["Dilation", "Erosion", "Closing", "Opening"])
+    
+    kernel = np.ones((3,3), np.uint8)
+
+    rows  , cols   = img.shape
+    k_rows, k_cols = kernel.shape
+    pad_h , pad_w  = k_rows // 2, k_rows // 2
+    
+    padded_img  = np.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode='constant', constant_values=0)
+    dilate_img  = np.zeros_like(img)
+    erode_img   = np.zeros_like(img)
+    opening_img = np.zeros_like(img)
+    closing_img = np.zeros_like(img)
+    
+    for i in range(rows):
+        for j in range(cols):
+            roi = padded_img[i : i + k_rows, j : j + k_cols]
+            if np.any(roi > 0): 
+                dilate_img[i,j] = 1
+            if np.all(roi > 0): 
+                erode_img[i,j] = 1
+            
+    padded_dilate_img = np.pad(dilate_img, ((pad_h, pad_h), (pad_w, pad_w)), mode='constant', constant_values=0)
+    padded_erode_img  = np.pad(erode_img, ((pad_h, pad_h), (pad_w, pad_w)), mode='constant', constant_values=0)
+    
+    for i in range(rows):
+        for j in range(cols):
+            roi_d = padded_dilate_img[i : i + k_rows, j : j + k_cols]
+            roi_e = padded_erode_img[i : i + k_rows, j : j + k_cols]
+            
+            if np.any(roi_e > 0): 
+                opening_img[i,j] = 1
+            if np.all(roi_d > 0): 
+                closing_img[i,j] = 1
+    
+    dilate_styled_df  = pd.DataFrame( dilate_img).style.map(apply_binary_style)
+    erode_styled_df   = pd.DataFrame(  erode_img).style.map(apply_binary_style)
+    opening_styled_df = pd.DataFrame(opening_img).style.map(apply_binary_style)
+    closing_styled_df = pd.DataFrame(closing_img).style.map(apply_binary_style)
+    
+    dilate_scaled_img  = cv.resize( dilate_img, (400, 400), interpolation=cv.INTER_NEAREST) * 255
+    erode_scaled_img   = cv.resize(  erode_img, (400, 400), interpolation=cv.INTER_NEAREST) * 255
+    opening_scaled_img = cv.resize(opening_img, (400, 400), interpolation=cv.INTER_NEAREST) * 255
+    closing_scaled_img = cv.resize(closing_img, (400, 400), interpolation=cv.INTER_NEAREST) * 255
+    
+    with DILATE:
+        st.markdown("#### Matrix Table")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.markdown("##### Before")
+            left.table(styled_df, hide_header=True)
+            
+            right.markdown("##### After Dilation")
+            right.table(dilate_styled_df, hide_header=True)
+        
+        st.markdown("#### Binary Image")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.markdown("##### Before")
+            left.image(scaled_img, use_container_width=True)
+            
+            right.markdown("##### After Dilation")
+            right.image(dilate_scaled_img, use_container_width=True)
+    
+    with ERODE:
+        st.markdown("#### Matrix Table")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.markdown("##### Before")
+            left.table(styled_df, hide_header=True)
+            
+            right.markdown("##### After Erode")
+            right.table(erode_styled_df, hide_header=True)
+        
+        st.markdown("#### Binary Image")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.markdown("##### Before")
+            left.image(scaled_img, use_container_width=True)
+            
+            right.markdown("##### After Erode")
+            right.image(erode_scaled_img, use_container_width=True)
+    
+    with OPENING:
+        st.markdown("#### Matrix Table")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.markdown("##### Before")
+            left.table(styled_df, hide_header=True)
+            
+            right.markdown("##### After Opening (Erosion > Dilation)")
+            right.table(opening_styled_df, hide_header=True)
+        
+        st.markdown("#### Binary Image")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.markdown("##### Before")
+            left.image(scaled_img, use_container_width=True)
+            
+            right.markdown("##### After Opening (Erosion > Dilation)")
+            right.image(opening_scaled_img, use_container_width=True)
+    
+    with CLOSING:
+        st.markdown("#### Matrix Table")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.markdown("##### Before")
+            left.table(styled_df, hide_header=True)
+            
+            right.markdown("##### After Closing (Dilation > Erosion)")
+            right.table(closing_styled_df, hide_header=True)
+        
+        st.markdown("#### Binary Image")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.markdown("##### Before")
+            left.image(scaled_img, use_container_width=True)
+            
+            right.markdown("##### After Closing (Dilation > Erosion)")
+            right.image(closing_scaled_img, use_container_width=True)
+    
+    
+    st.markdown("### Original Data")
+    with st.container(border=True):
+        left, right = st.columns(2)
+        left.markdown("#### Matrix Table")
+        left.table(styled_df, hide_header=True)
+        
+        right.markdown("#### Binary Image")
+        right.image(scaled_img, use_container_width=True)
+        
+    st.markdown("### After Morphology")
+    with st.container(border=True):
+        left, right = st.columns(2)
+        with left: 
+            st.markdown("#### Matrix Table")
+            st.table(styled_df, hide_header=True)
+        
+        with right:
+            st.markdown("#### Binary Image")
+            st.image(scaled_img, use_container_width=True)
 # =========================================================
 # ROUTING DASHBOARD SIDEBAR
 # =========================================================
@@ -963,7 +1137,8 @@ courses_page = {
     "👤 Home Page": home,
     "🪄 Materi 4": course_4,
     "📊 Materi 5": course_5,
-    "🎨 Materi 6": course_6
+    "🎨 Materi 6": course_6,
+    "🎰 Materi 7": course_7
 }
 
 with st.sidebar:
