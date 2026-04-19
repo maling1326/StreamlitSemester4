@@ -77,6 +77,39 @@ def render_numbering(number, description, color="#ffffff"):
     """
     return st.markdown(html_code, unsafe_allow_html=True)
 
+def matrix_to_visual_img(matrix, cell_size=50):
+    h, w = matrix.shape
+    # Buat kanvas kosong (RGB)
+    img_visual = np.zeros((h * cell_size, w * cell_size, 3), dtype=np.uint8)
+    
+    for i in range(h):
+        for j in range(w):
+            val = matrix[i, j]
+            # Warna background: Putih jika 1, Hitam jika 0
+            bg_color = (255, 255, 255) if val > 0 else (0, 0, 0)
+            # Warna teks: Hitam jika bg putih, Putih jika bg hitam
+            text_color = (0, 0, 0) if val > 0 else (255, 255, 255)
+            
+            # Gambar kotak sel
+            cv.rectangle(img_visual, (j*cell_size, i*cell_size), 
+                        ((j+1)*cell_size, (i+1)*cell_size), bg_color, -1)
+            
+            # Gambar border tipis antar sel agar terlihat seperti grid
+            cv.rectangle(img_visual, (j*cell_size, i*cell_size), 
+                        ((j+1)*cell_size, (i+1)*cell_size), (50, 50, 50), 1)
+            
+            # Tulis angka 0 atau 1 di tengah sel
+            text = str(int(val))
+            font = cv.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.6
+            thickness = 1
+            text_size = cv.getTextSize(text, font, font_scale, thickness)[0]
+            text_x = j * cell_size + (cell_size - text_size[0]) // 2
+            text_y = i * cell_size + (cell_size + text_size[1]) // 2
+            cv.putText(img_visual, text, (text_x, text_y), font, font_scale, text_color, thickness)
+            
+    return img_visual
+
 def img_download_button(img, buttonText, filename, buttonType=2, reverse_channels=True):
     curr_img = img.copy()
     if reverse_channels:
@@ -962,8 +995,78 @@ def course_7():
         </div>
     """, unsafe_allow_html=True)
     
-    st.divider()
+    st.write("") 
+
+    # --- SECTION 1: PENDAHULUAN & PRINSIP DASAR ---
+    col1, col2 = st.columns([1, 1], gap="medium")
     
+    with col1:
+        with st.container(border=True):
+            st.subheader("🧩 Apa itu Morfologi?")
+            st.write("Teknik pengolahan citra berdasarkan bentuk (shape) objek pada citra biner.")
+            st.write("- **Alur Kerja:** Grayscale → Binerisasi (Thresholding) → Morfologi[cite: 26, 27, 28].")
+            st.write("- **Elemen Kunci:** Menggunakan *Structuring Element* (SE) sebagai 'probe'.")
+            
+    with col2:
+        with st.container(border=True):
+            st.subheader("📐 Structuring Element (SE)")
+            st.write("Matriks kecil (biasanya ganjil) yang menentukan hasil operasi[cite: 190].")
+            st.write("- **Nilai:** Berisi 0, 1, atau *Don't Care* (kosong)[cite: 191, 192].")
+            st.write("- **Bentuk:** Dapat berbentuk Box, Cross, atau Disc (bulat)[cite: 195, 198, 201].")
+
+    # --- SECTION 2: OPERASI DASAR (EROSI & DILASI) ---
+    st.markdown("### 🛠️ Operasi Morfologi Dasar")
+    c1, c2 = st.columns(2)
+    
+    with c1:
+        with st.container(border=True):
+            st.error("**Erosi (Erosion) — Fit**")
+            st.write("Mengecilkan objek dengan menghapus piksel di perbatasan objek[cite: 187, 462].")
+            st.latex(r"g(x) = f(x) \ominus SE")
+            st.caption("**Logika Fit:** Output bernilai 1 jika SEMUA elemen SE cocok dengan input[cite: 43, 126].")
+            
+    with c2:
+        with st.container(border=True):
+            st.info("**Dilasi (Dilation) — Hit**")
+            st.write("Memperbesar objek dan mengisi lubang (holes) kecil pada objek[cite: 116, 464, 465].")
+            st.latex(r"g(x) = f(x) \oplus SE")
+            st.caption("**Logika Hit:** Output bernilai 1 jika MINIMAL SATU elemen SE cocok dengan input[cite: 41, 54].")
+
+    # --- SECTION 3: OPERASI GABUNGAN (COMPOUND) ---
+    st.markdown("### 🧬 Operasi Gabungan (Compound)")
+    with st.container(border=True):
+        st.write("Kombinasi Erosi dan Dilasi untuk hasil yang lebih halus dan tidak destruktif[cite: 304, 318].")
+        
+        grid1, grid2 = st.columns(2)
+        with grid1:
+            st.success("**Opening**")
+            st.write("Erosi diikuti Dilasi. Berguna untuk menghilangkan noise/objek kecil tanpa mengubah ukuran asli objek utama[cite: 306, 315, 316].")
+            st.latex(r"f \circ SE = (f \ominus SE) \oplus SE")
+        with grid2:
+            st.success("**Closing**")
+            st.write("Dilasi diikuti Erosi. Berguna untuk mengisi lubang atau celah kecil di dalam objek[cite: 307, 383, 384].")
+            st.latex(r"f \bullet SE = (f \oplus SE) \ominus SE")
+        
+        st.info("💡 **Idempotent:** Mengulang operasi Opening/Closing berkali-kali tidak akan mengubah hasil setelah operasi pertama.")
+
+    # --- SECTION 4: KEGUNAAN UTAMA ---
+    st.markdown("### 🧪 Kegunaan Morfologi")
+    col_app1, col_app2, col_app3 = st.columns(3)
+    with col_app1:
+        with st.container(border=True):
+            st.markdown("🔍 **Isolate Objects**")
+            st.write("Memisahkan objek yang menempel, misalnya dalam aplikasi hitung koin[cite: 23, 301].")
+    with col_app2:
+        with st.container(border=True):
+            st.markdown("✨ **Remove Noise**")
+            st.write("Membersihkan bintik-bintik putih yang tidak diinginkan pada background[cite: 18, 463].")
+    with col_app3:
+        with st.container(border=True):
+            st.markdown("🖼️ **Outline Detection**")
+            st.write("Mendapatkan garis tepi dengan mengurangkan citra asli dengan hasil erosi[cite: 305, 309].")
+
+    st.divider()
+
     matrix = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               [0, 0, 1, 1, 0, 0, 1, 0, 0, 0],
@@ -986,9 +1089,6 @@ def course_7():
     
     df = pd.DataFrame(matrix)
     styled_df = df.style.map(apply_binary_style)
-    
-    st.subheader("Pilih Metode Morfologi Citra Biner")
-    DILATE, ERODE, CLOSING, OPENING = st.tabs(["Dilation", "Erosion", "Closing", "Opening"])
     
     kernel = np.ones((3,3), np.uint8)
 
@@ -1033,83 +1133,16 @@ def course_7():
     opening_scaled_img = cv.resize(opening_img, (400, 400), interpolation=cv.INTER_NEAREST) * 255
     closing_scaled_img = cv.resize(closing_img, (400, 400), interpolation=cv.INTER_NEAREST) * 255
     
-    with DILATE:
-        st.markdown("#### Matrix Table")
-        with st.container(border=True):
-            left, right = st.columns(2)
-            left.markdown("##### Before")
-            left.table(styled_df, hide_header=True)
-            
-            right.markdown("##### After Dilation")
-            right.table(dilate_styled_df, hide_header=True)
-        
-        st.markdown("#### Binary Image")
-        with st.container(border=True):
-            left, right = st.columns(2)
-            left.markdown("##### Before")
-            left.image(scaled_img, use_container_width=True)
-            
-            right.markdown("##### After Dilation")
-            right.image(dilate_scaled_img, use_container_width=True)
-    
-    with ERODE:
-        st.markdown("#### Matrix Table")
-        with st.container(border=True):
-            left, right = st.columns(2)
-            left.markdown("##### Before")
-            left.table(styled_df, hide_header=True)
-            
-            right.markdown("##### After Erode")
-            right.table(erode_styled_df, hide_header=True)
-        
-        st.markdown("#### Binary Image")
-        with st.container(border=True):
-            left, right = st.columns(2)
-            left.markdown("##### Before")
-            left.image(scaled_img, use_container_width=True)
-            
-            right.markdown("##### After Erode")
-            right.image(erode_scaled_img, use_container_width=True)
-    
-    with OPENING:
-        st.markdown("#### Matrix Table")
-        with st.container(border=True):
-            left, right = st.columns(2)
-            left.markdown("##### Before")
-            left.table(styled_df, hide_header=True)
-            
-            right.markdown("##### After Opening (Erosion > Dilation)")
-            right.table(opening_styled_df, hide_header=True)
-        
-        st.markdown("#### Binary Image")
-        with st.container(border=True):
-            left, right = st.columns(2)
-            left.markdown("##### Before")
-            left.image(scaled_img, use_container_width=True)
-            
-            right.markdown("##### After Opening (Erosion > Dilation)")
-            right.image(opening_scaled_img, use_container_width=True)
-    
-    with CLOSING:
-        st.markdown("#### Matrix Table")
-        with st.container(border=True):
-            left, right = st.columns(2)
-            left.markdown("##### Before")
-            left.table(styled_df, hide_header=True)
-            
-            right.markdown("##### After Closing (Dilation > Erosion)")
-            right.table(closing_styled_df, hide_header=True)
-        
-        st.markdown("#### Binary Image")
-        with st.container(border=True):
-            left, right = st.columns(2)
-            left.markdown("##### Before")
-            left.image(scaled_img, use_container_width=True)
-            
-            right.markdown("##### After Closing (Dilation > Erosion)")
-            right.image(closing_scaled_img, use_container_width=True)
-    
-    
+    orig_table_img    = matrix_to_visual_img(src_image)
+    dilate_table_img  = matrix_to_visual_img(dilate_img)
+    erode_table_img   = matrix_to_visual_img(erode_img)
+    closing_table_img = matrix_to_visual_img(closing_img)
+    opening_table_img = matrix_to_visual_img(opening_img)
+
+    # --- INTEGRASI DENGAN KODE VISUALISASI MATRIKS (DARI CHAT SEBELUMNYA) ---
+    st.markdown("### 🎰 Simulasi & Latihan")
+    st.write("")
+
     st.markdown("### Original Data")
     with st.container(border=True):
         left, right = st.columns(2)
@@ -1121,14 +1154,51 @@ def course_7():
         
     st.markdown("### After Morphology")
     with st.container(border=True):
-        left, right = st.columns(2)
-        with left: 
-            st.markdown("#### Matrix Table")
-            st.table(styled_df, hide_header=True)
+        st.markdown("#### Dilation")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.table(dilate_styled_df, hide_header=True)
+            right.image(dilate_scaled_img)
         
-        with right:
-            st.markdown("#### Binary Image")
-            st.image(scaled_img, use_container_width=True)
+        st.markdown("#### Erosion")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.table(erode_styled_df, hide_header=True)
+            right.image(erode_scaled_img)
+        
+        st.markdown("#### Closing")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.table(closing_styled_df, hide_header=True)
+            right.image(closing_scaled_img)
+        
+        st.markdown("#### Opening")
+        with st.container(border=True):
+            left, right = st.columns(2)
+            left.table(opening_styled_df, hide_header=True)
+            right.image(opening_scaled_img)
+
+        img_download_button_zip(
+            imgs = [
+                scaled_img, orig_table_img, 
+                dilate_scaled_img, dilate_table_img,
+                erode_scaled_img, erode_table_img,
+                closing_scaled_img, closing_table_img,
+                opening_scaled_img, opening_table_img
+            ],
+            filenames = [
+                "Original_Binary", "Original_Matrix_Table",
+                "Dilation_Binary", "Dilation_Matrix_Table",
+                "Erosion_Binary", "Erosion_Matrix_Table",
+                "Closing_Binary", "Closing_Matrix_Table",
+                "Opening_Binary", "Opening_Matrix_Table"
+            ],
+            buttonText   = "Download Semua Hasil & Tabel **(ZIP)**",
+            zip_filename = "Kumpulan_Hasil_Morfologi_Lengkap",
+            buttonType   = 1
+        )
+
+        
 # =========================================================
 # ROUTING DASHBOARD SIDEBAR
 # =========================================================
